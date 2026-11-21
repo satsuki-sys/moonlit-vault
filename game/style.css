@@ -1,0 +1,40 @@
+/* Moonlit Vault — page chrome around the canvas. One job: center the game on
+   a dark page and keep the frame quiet so the night inside it does the work. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #07080f;
+  color: #d8d2c0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+#game {
+  display: block;
+  width: min(960px, 96vw);
+  height: auto;
+  border: 1px solid #2a2f42;
+  border-radius: 6px;
+  box-shadow: 0 0 60px rgba(20, 30, 70, 0.55), 0 8px 30px rgba(0, 0, 0, 0.6);
+  background: #0a0c18;
+  cursor: crosshair;
+}
+
+.foot {
+  margin: 0;
+  font-size: 13px;
+  color: #8a91a5;
+  text-align: center;
+  max-width: 960px;
+}
