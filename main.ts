@@ -8,7 +8,7 @@
 // Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -26,6 +26,18 @@ if (existsSync(join(repoRoot, 'screenshots'))) {
   cpSync(join(repoRoot, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
 }
 
+// Count what was handed in, for the summary line below: every file under
+// game/ (walked recursively) and every screenshot.
+function countFiles(dir) {
+  let n = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    n += entry.isDirectory() ? countFiles(join(dir, entry.name)) : 1;
+  }
+  return n;
+}
+const gameFiles = countFiles(join(outDir, 'game'));
+const shotFiles = existsSync(join(outDir, 'screenshots')) ? readdirSync(join(outDir, 'screenshots')).length : 0;
+
 // The caps mirror the gate: at most 4 screenshots of 256 KiB, game/ at most
 // 993 files and 48 MiB, and the dossier text at most 160 KiB.
 const dossier = buildDossier(outDir, {
@@ -39,4 +51,6 @@ writeFileSync(join(outDir, 'dossier.json'), dossier);
 
 // One line on stdout, so a local run can confirm the hand-in at a glance:
 // the dossier is the judge's whole view of the entry.
-console.log(`Moonlit Vault handed in: dossier.json is ${Buffer.byteLength(dossier)} bytes.`);
+console.log(
+  `Moonlit Vault handed in: ${gameFiles} game files, ${shotFiles} screenshots, dossier.json is ${Buffer.byteLength(dossier)} bytes.`,
+);

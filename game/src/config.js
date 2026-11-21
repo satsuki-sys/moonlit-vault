@@ -34,6 +34,17 @@ export const NOISE_RUN_RADIUS = 150;
 export const NOISE_COIN_RADIUS = 250;
 export const COINS_PER_LEVEL = 3;
 
+// Light: each roundsman carries a lantern, and its pool of light is both a
+// landmark and a warning — where the warm light falls, his gaze may follow.
+export const GUARD_LANTERN_RADIUS = 118;
+
+// The floor-intro banner: name, mood line and objective, shown while the
+// player takes their first steps on a new floor.
+export const INTRO_SECONDS = 3.6;
+
+// Sparkle particles for relic pickups and the exit's payoff burst.
+export const PARTICLE_MAX = 240;
+
 // Scoring.
 export const RELIC_POINTS = 100;
 export const LEVEL_CLEAR_POINTS = 250;

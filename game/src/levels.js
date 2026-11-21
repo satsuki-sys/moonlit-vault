@@ -11,6 +11,8 @@ export const LEVELS = [
   {
     name: 'The Night Warehouse',
     sub: 'Crates, dust, and three sleepy roundsmen.',
+    floor: 'wood',
+    shafts: [[3, 3], [14, 4], [20, 2]],
     sightRange: 235,
     guardSpeed: 62,
     map: [
@@ -20,8 +22,8 @@ export const LEVELS = [
       '#..C.....C........C....#',
       '#..C.....C....C...C....#',
       '#......C.....C.........#',
-      '#..*........C....C.....#',
-      '#.....C............C...#',
+      '#..*........CC...C.....#',
+      '#.....C......C.....C...#',
       '#.....C....C...C.......#',
       '#..C.......C...C...*...#',
       '#..C...C.......C.......#',
@@ -40,19 +42,21 @@ export const LEVELS = [
   {
     name: 'The Quiet Gallery',
     sub: 'Glass cases, velvet ropes, four sharper eyes.',
+    floor: 'marble',
+    shafts: [[6, 3], [17, 3]],
     sightRange: 250,
     guardSpeed: 70,
     map: [
       '########################',
       '#P...S......S......*...#',
       '#....S......S..........#',
-      '#....S..C.......S......#',
+      '#....S..C...C...S......#',
       '#....S......S....S.....#',
       '#..C.....S......S..C...#',
       '#....S......S..........#',
       '#.*..S..C...S....S.....#',
       '#....S......S....S.....#',
-      '#.......S.......S..*...#',
+      '#.....C.S.......S..*...#',
       '#..S.......S......S....#',
       '#..S...C...S...S.......#',
       '#..S.......S......S....#',
@@ -70,6 +74,8 @@ export const LEVELS = [
   {
     name: 'The Vault Wing',
     sub: 'Stone corridors, five guards, no room for noise.',
+    floor: 'stone',
+    shafts: [[9, 3], [18, 2]],
     sightRange: 260,
     guardSpeed: 78,
     map: [
@@ -125,6 +131,8 @@ export function parseLevel(def) {
   return {
     name: def.name,
     sub: def.sub,
+    floor: def.floor || 'wood',
+    shafts: def.shafts || [],
     sightRange: def.sightRange,
     guardSpeed: def.guardSpeed,
     solids,

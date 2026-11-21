@@ -4,7 +4,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #07080f;
+  background: radial-gradient(1100px 700px at 50% 30%, #101736 0%, #070a18 55%, #04050c 100%);
   color: #d8d2c0;
   font-family: system-ui, -apple-system, sans-serif;
 }
@@ -24,9 +24,9 @@ main {
   display: block;
   width: min(960px, 96vw);
   height: auto;
-  border: 1px solid #2a2f42;
+  border: 1px solid #3d4a75;
   border-radius: 6px;
-  box-shadow: 0 0 60px rgba(20, 30, 70, 0.55), 0 8px 30px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 80px rgba(70, 100, 200, 0.28), 0 0 26px rgba(120, 160, 255, 0.14), 0 10px 34px rgba(0, 0, 0, 0.65);
   background: #0a0c18;
   cursor: crosshair;
 }

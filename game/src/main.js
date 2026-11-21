@@ -13,6 +13,7 @@ import {
   METER_SUSPICIOUS,
   NOISE_COIN_RADIUS,
   NOISE_RUN_RADIUS,
+  PARTICLE_MAX,
   PLAYER_RADIUS,
   RELIC_POINTS,
   TIME_BONUS_PER_SECOND,
@@ -20,6 +21,7 @@ import {
   VIEW_W,
 } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
+import { pointBlocked } from './geometry.js';
 import { Guard } from './guards.js';
 import { Player } from './player.js';
 import { Input } from './input.js';
@@ -45,11 +47,49 @@ const game = {
   alarmTimer: 0,
   graceTimer: 0,
   coins: [], // tossed coins still ringing: {x, y, born}
+  particles: [], // gold sparkles: {x, y, vx, vy, life, maxLife, size, color}
+  introT: 99, // seconds since the floor loaded; the banner reads it
   time: 0,
   frozen: false, // screenshot staging: render, but do not simulate
   clearLine: '',
   loadLevel,
 };
+
+// A burst of sparkles at a point: relic gold when one is pocketed, green and
+// gold when the exit takes the player home.
+function burst(x, y, count, color, speed = 90) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = speed * (0.35 + Math.random() * 0.85);
+    const life = 0.55 + Math.random() * 0.6;
+    game.particles.push({
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - 26,
+      life,
+      maxLife: life,
+      size: 2 + Math.random() * 2.6,
+      color,
+    });
+  }
+  if (game.particles.length > PARTICLE_MAX) {
+    game.particles.splice(0, game.particles.length - PARTICLE_MAX);
+  }
+}
+
+// Particles drift and fade every frame, on every screen, so the exit burst
+// still dances behind the floor-cleared card.
+function stepParticles(dt) {
+  for (const p of game.particles) {
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 130 * dt; // a gentle fall, like dust off a shelf
+    p.vx *= 1 - 1.6 * dt;
+  }
+  game.particles = game.particles.filter((p) => p.life > 0);
+}
 
 const input = new Input(canvas);
 const renderer = new Renderer(canvas);
@@ -71,6 +111,8 @@ function loadLevel(index) {
   game.alarmTimer = 0;
   game.graceTimer = 0;
   game.coins = [];
+  game.particles = [];
+  game.introT = 0;
   game.levelTime = 0;
   game.screen = 'play';
 }
@@ -110,12 +152,33 @@ function update(dt) {
   const { world, player } = game;
   game.levelTime += dt;
   game.totalTime += dt;
+  game.introT += dt;
   sfx.ambient(dt);
 
-  // Coin tosses: a click throws where the mouse points.
+  // Coin tosses: a click throws where the mouse points. A coin that would
+  // land inside a crate or a wall hops to the nearest open floor instead —
+  // a guard sent to stare into a shelf helps nobody.
   for (const click of input.takeClicks()) {
     const land = player.tossCoin(click.x, click.y);
     if (land) {
+      if (pointBlocked(world.solids, land.x, land.y)) {
+        let found = null;
+        for (let r = 12; r <= 56 && !found; r += 11) {
+          for (let k = 0; k < 8 && !found; k++) {
+            const a = (k * Math.PI) / 4;
+            const cx = land.x + Math.cos(a) * r;
+            const cy = land.y + Math.sin(a) * r;
+            if (!pointBlocked(world.solids, cx, cy)) found = { x: cx, y: cy };
+          }
+        }
+        if (found) {
+          land.x = found.x;
+          land.y = found.y;
+        } else {
+          player.coins += 1; // nowhere honest to land: the coin stays home
+          continue;
+        }
+      }
       game.coins.push({ x: land.x, y: land.y, born: game.time });
       sfx.coinPing();
       for (const guard of game.guards) {
@@ -191,18 +254,22 @@ function update(dt) {
     }
   }
 
-  // Relics: walk over one to pocket it.
+  // Relics: walk over one to pocket it, in a spray of gold dust.
   for (const relic of world.relics) {
     if (!relic.taken && Math.hypot(relic.x - player.x, relic.y - player.y) < 26) {
       relic.taken = true;
       player.relicsTaken += 1;
       game.score += RELIC_POINTS;
+      burst(relic.x, relic.y, 12, 'rgba(255,210,94,A)');
       sfx.pickup();
     }
   }
 
-  // The exit: step into the green light to clear the floor.
+  // The exit: step into the green light to clear the floor, and let the
+  // doorway answer with a burst of its own.
   if (world.exit && Math.hypot(world.exit.x - player.x, world.exit.y - player.y) < 26) {
+    burst(world.exit.x, world.exit.y, 30, 'rgba(120,255,170,A)', 120);
+    burst(player.x, player.y, 10, 'rgba(255,210,94,A)', 70);
     levelCleared();
   }
 }
@@ -214,6 +281,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   game.time += dt;
+  stepParticles(dt);
   if (!game.frozen) {
     if (game.screen === 'title') {
       if (input.takeAnyKey() || input.takeClicks().length > 0) {

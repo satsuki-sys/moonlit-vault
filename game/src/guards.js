@@ -5,9 +5,6 @@
 // -> investigate (walks to a noise or last-seen spot) -> chase (alarm, runs at
 // the player) -> return (walks back to the nearest waypoint, resumes patrol).
 import {
-  GUARD_CHASE_SPEED,
-  GUARD_INVESTIGATE_SPEED,
-  GUARD_PATROL_SPEED,
   GUARD_SIGHT_HALF_ANGLE,
   GUARD_WAYPOINT_PAUSE,
   TILE,
@@ -45,6 +42,23 @@ export class Guard {
     this.prevX = this.x;
     this.prevY = this.y;
     this.alertFlash = 0; // seconds the "!" stays above the guard
+    this.seesNow = false; // the renderer brightens the cone while this is set
+    this.stare = 0; // a beat of standing still when suspicion first bites
+  }
+
+  // Speeds scale off the floor's own pace (this.speed is the patrol pace the
+  // level asked for): a guard hurries to look, and runs flat out on the chase,
+  // a touch faster on the later, sharper floors.
+  patrolSpeed() {
+    return this.speed;
+  }
+
+  hurrySpeed() {
+    return this.speed * 1.8;
+  }
+
+  chaseSpeed() {
+    return 150 + this.speed * 0.35;
   }
 
   // Walk toward a point, sliding along solid tiles. Returns true on arrival.
@@ -62,7 +76,7 @@ export class Guard {
     // Footstep timing, so the audio module can place each guard's tread.
     this.stepTimer -= dt;
     if (this.stepTimer <= 0) {
-      this.stepTimer = speed > GUARD_CHASE_SPEED - 10 ? 0.34 : 0.5;
+      this.stepTimer = speed > this.chaseSpeed() - 10 ? 0.34 : 0.5;
       this.stepped = true;
     }
     // A guard that makes no progress for a while gives up on this target.
@@ -117,6 +131,7 @@ export class Guard {
     this.stepped = false;
     this.alertFlash = Math.max(0, this.alertFlash - dt);
     const sees = this.seesPlayer(world, player);
+    this.seesNow = sees;
     if (sees) {
       events.seenBy.push(this);
       this.lastSeen = { x: player.x, y: player.y };
@@ -133,7 +148,7 @@ export class Guard {
           break;
         }
         const wp = waypointPx(this.path[this.wpIndex]);
-        if (this.moveToward(world, wp.x, wp.y, GUARD_PATROL_SPEED, dt) || this.stuckTimer > 0.7) {
+        if (this.moveToward(world, wp.x, wp.y, this.patrolSpeed(), dt) || this.stuckTimer > 0.7) {
           this.stuckTimer = 0;
           this.pauseTimer = GUARD_WAYPOINT_PAUSE;
           this.wpIndex += this.wpDir;
@@ -148,6 +163,7 @@ export class Guard {
         if (this.suspicion > 0.45) {
           this.state = GUARD_STATES.SUSPICIOUS;
           this.target = this.lastSeen ? { ...this.lastSeen } : null;
+          this.stare = 0.45; // stop, stare, then walk over — a fair warning
         }
         break;
       }
@@ -156,7 +172,13 @@ export class Guard {
           this.state = GUARD_STATES.RETURN;
           break;
         }
-        if (this.moveToward(world, this.target.x, this.target.y, GUARD_INVESTIGATE_SPEED, dt) || this.stuckTimer > 0.7) {
+        if (this.stare > 0) {
+          // The stare: feet planted, gaze locked on the spot that moved.
+          this.stare -= dt;
+          this.facing = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+          break;
+        }
+        if (this.moveToward(world, this.target.x, this.target.y, this.hurrySpeed(), dt) || this.stuckTimer > 0.7) {
           this.stuckTimer = 0;
           this.state = GUARD_STATES.RETURN;
         }
@@ -171,7 +193,7 @@ export class Guard {
           this.state = GUARD_STATES.RETURN;
           break;
         }
-        if (this.moveToward(world, this.target.x, this.target.y, GUARD_INVESTIGATE_SPEED, dt) || this.stuckTimer > 0.7) {
+        if (this.moveToward(world, this.target.x, this.target.y, this.hurrySpeed(), dt) || this.stuckTimer > 0.7) {
           this.stuckTimer = 0;
           this.state = GUARD_STATES.RETURN;
         }
@@ -182,7 +204,7 @@ export class Guard {
         break;
       }
       case GUARD_STATES.CHASE: {
-        this.moveToward(world, player.x, player.y, GUARD_CHASE_SPEED, dt);
+        this.moveToward(world, player.x, player.y, this.chaseSpeed(), dt);
         if (sees) this.lastSeen = { x: player.x, y: player.y };
         break;
       }
@@ -199,7 +221,7 @@ export class Guard {
           }
         });
         const wp = waypointPx(this.path[best]);
-        if (this.moveToward(world, wp.x, wp.y, GUARD_PATROL_SPEED, dt) || this.stuckTimer > 0.7) {
+        if (this.moveToward(world, wp.x, wp.y, this.patrolSpeed(), dt) || this.stuckTimer > 0.7) {
           this.stuckTimer = 0;
           this.wpIndex = best;
           this.state = GUARD_STATES.PATROL;
@@ -207,6 +229,7 @@ export class Guard {
         if (this.suspicion > 0.45 && this.lastSeen) {
           this.state = GUARD_STATES.SUSPICIOUS;
           this.target = { ...this.lastSeen };
+          this.stare = 0.45;
         }
         break;
       }
